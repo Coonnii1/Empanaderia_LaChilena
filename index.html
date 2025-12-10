@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Chilena — Empanadas Artesanales</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ====== HEADER ====== -->
+  <header class="header">
+    <div class="brand">
+      <span class="logo">🍽️ La Chilena</span>
+      <span class="slogan">Empanadas artesanales al horno y fritas</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn" data-view="home">Inicio</button>
+      <button class="nav-btn" data-view="catalog">Catálogo</button>
+      <button class="nav-btn" data-view="cart">Carrito</button>
+      <button class="nav-btn" data-view="orders">Pedidos</button>
+      <button id="loginBtn" class="nav-btn">Iniciar Sesión</button>
+    </nav>
+  </header>
+
+  <!-- ====== MAIN CONTENT ====== -->
+  <main id="mainContent">
+
+    <!-- ====== HOME VIEW ====== -->
+    <section id="homeView" class="view active">
+      <div class="hero">
+        <h1>Bienvenid@ a <span>La Chilena</span></h1>
+        <p>Sabores tradicionales con el toque casero que nos caracteriza. 
+        Pide tus empanadas favoritas y disfruta donde quieras.</p>
+        <button class="btn primary" data-view="catalog">Ver catálogo</button>
+      </div>
+      <div class="hero-image">
+        <img src="https://cdn-icons-png.flaticon.com/512/857/857681.png" alt="Empanadas chilenas">
+      </div>
+    </section>
+
+    <!-- ====== CATALOG VIEW ====== -->
+    <section id="catalogView" class="view">
+      <h2>Catálogo de Empanadas</h2>
+
+      <div class="filters">
+        <input id="searchInput" type="text" placeholder="Buscar empanadas..." />
+        <select id="categoryFilter">
+          <option value="">Todas las categorías</option>
+        </select>
+        <select id="priceFilter">
+          <option value="">Todos los precios</option>
+          <option value="0-1499">Hasta $1.499</option>
+          <option value="1500-1799">$1.500 - $1.799</option>
+          <option value="1800-99999">Más de $1.800</option>
+        </select>
+        <button id="resetFilters" class="btn secondary">Limpiar</button>
+      </div>
+
+      <div id="catalogContainer" class="catalog-grid"></div>
+    </section>
+
+    <!-- ====== CART VIEW ====== -->
+    <section id="cartView" class="view">
+      <h2>🛒 Tu Carrito</h2>
+      <ul id="cartList" class="cart-list"></ul>
+      <div id="emptyCartMsg" class="small">Tu carrito está vacío</div>
+      <p class="total">Total: $<span id="cartTotal">0</span></p>
+
+      <div class="cart-actions">
+        <button id="clearCart" class="btn secondary">Vaciar</button>
+        <button id="checkoutBtn" class="btn primary">Ir al pago</button>
+      </div>
+    </section>
+
+    <!-- ====== LOGIN / REGISTER VIEW ====== -->
+    <section id="loginView" class="view">
+      <h2>Registro / Inicio de sesión</h2>
+      <div class="auth-box">
+        <input id="nameInput" type="text" placeholder="Nombre completo" />
+        <input id="emailInput" type="email" placeholder="Correo electrónico" />
+        <input id="passwordInput" type="password" placeholder="Contraseña" />
+        <div class="auth-buttons">
+          <button id="registerBtn" class="btn primary">Registrarse</button>
+          <button id="loginUserBtn" class="btn secondary">Iniciar sesión</button>
+        </div>
+        <p class="small">Los datos se guardan localmente en tu navegador.</p>
+      </div>
+    </section>
+
+    <!-- ====== ORDERS VIEW ====== -->
+    <section id="ordersView" class="view">
+      <h2>Historial de pedidos</h2>
+      <div id="ordersContainer" class="orders"></div>
+    </section>
+
+  </main>
+
+  <!-- ====== MODAL (DETALLE DE EMPANADA / CHECKOUT) ====== -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <button id="closeModal" class="btn close">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ====== FOOTER ====== -->
+  <footer class="footer">
+    <p>© 2025 La Chilena — Empanadas Artesanales</p>
+    <div class="socials">
+      <a href="#" title="Facebook">📘</a>
+      <a href="#" title="Instagram">📸</a>
+      <a href="#" title="Contacto">📧</a>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
