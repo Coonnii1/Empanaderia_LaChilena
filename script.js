@@ -1,5 +1,5 @@
 /* ===========================
-   La Chilena - script.js
+   La Chilena - script.js (corregido)
    =========================== */
 
 /* ====== Datos iniciales ====== */
@@ -89,6 +89,7 @@ const modalBody = document.getElementById("modalBody");
 const categoryFilter = document.getElementById("categoryFilter");
 const priceFilter = document.getElementById("priceFilter");
 const searchInput = document.getElementById("searchInput");
+const loginBtnEl = document.getElementById("loginBtn");
 
 /* ===========================
    Inicialización
@@ -99,23 +100,40 @@ function init() {
   loadCategories();
   renderCatalog();
   renderCart();
-  if (currentUser) updateLoginButton(true);
+  // asegurar que el loginBtn tenga comportamiento correcto desde el inicio
+  updateLoginButton(!!currentUser);
+  // añadir listeners a botones nav que sí tengan data-view
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    const view = btn.dataset.view;
+    if (view) {
+      btn.addEventListener("click", () => showView(view));
+    }
+  });
+  // setear comportamiento por defecto del loginBtn si no está cubierto
+  if (!loginBtnEl.dataset.view) {
+    // updateLoginButton ya estableció el onclick o el texto
+    // (si hay usuario actual, updateLoginButton creó el logout)
+    // si no, dejaremos el botón para abrir la vista login
+    if (!currentUser) {
+      loginBtnEl.onclick = () => showView("login");
+    }
+  }
 }
 
 /* ===========================
    Manejo de vistas
    =========================== */
-document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const view = btn.dataset.view;
-    showView(view);
-  });
-});
-
 function showView(viewId) {
-  views.forEach(v => v.classList.remove("active"));
+  if (!viewId) return;
+  // buscar el elemento target: esperamos que las secciones estén nombradas como `${viewId}View`
   const target = document.getElementById(viewId + "View");
-  if (target) target.classList.add("active");
+  if (!target) {
+    // no existe la vista pedida -> no hacemos nada (evita errores JS)
+    console.warn("Vista no encontrada:", viewId);
+    return;
+  }
+  views.forEach(v => v.classList.remove("active"));
+  target.classList.add("active");
   window.scrollTo(0, 0);
 }
 
@@ -134,11 +152,12 @@ function loadCategories() {
 
 function renderCatalog() {
   const container = document.getElementById("catalogContainer");
+  if (!container) return;
   container.innerHTML = "";
 
-  const q = searchInput.value.toLowerCase();
-  const cat = categoryFilter.value;
-  const price = priceFilter.value;
+  const q = (searchInput && searchInput.value || "").toLowerCase();
+  const cat = categoryFilter ? categoryFilter.value : "";
+  const price = priceFilter ? priceFilter.value : "";
 
   let list = PRODUCTS.filter(p => {
     if (cat && p.categoria !== cat) return false;
@@ -158,8 +177,10 @@ function renderCatalog() {
       <h4>${p.nombre}</h4>
       <div class="small">${p.categoria}</div>
       <div class="price">$${p.precio.toLocaleString()}</div>
-      <button class="btn primary" onclick="openProduct(${p.id})">Ver detalles</button>
+      <button class="btn primary" data-id="${p.id}">Ver detalles</button>
     `;
+    // delegación: manejar click en el botón de detalles
+    div.querySelector("button").addEventListener("click", () => openProduct(p.id));
     container.appendChild(div);
   });
 
@@ -168,18 +189,20 @@ function renderCatalog() {
   }
 }
 
-document.getElementById("searchInput").oninput = renderCatalog;
-document.getElementById("categoryFilter").onchange = renderCatalog;
-document.getElementById("priceFilter").onchange = renderCatalog;
-document.getElementById("resetFilters").onclick = () => {
-  searchInput.value = "";
-  categoryFilter.value = "";
-  priceFilter.value = "";
+// listeners filtros
+if (searchInput) searchInput.oninput = renderCatalog;
+if (categoryFilter) categoryFilter.onchange = renderCatalog;
+if (priceFilter) priceFilter.onchange = renderCatalog;
+const resetBtn = document.getElementById("resetFilters");
+if (resetBtn) resetBtn.onclick = () => {
+  if (searchInput) searchInput.value = "";
+  if (categoryFilter) categoryFilter.value = "";
+  if (priceFilter) priceFilter.value = "";
   renderCatalog();
 };
 
 /* ===========================
-   Detalle de producto
+   Detalle de producto (modal)
    =========================== */
 function openProduct(id) {
   const p = PRODUCTS.find(x => x.id === id);
@@ -194,18 +217,20 @@ function openProduct(id) {
     `).join("")}
     <div style="margin-top:10px;">
       <input type="number" id="qty" min="1" value="1" style="width:60px;">
-      <button class="btn primary" onclick="addToCart(${p.id})">Agregar al carrito</button>
+      <button class="btn primary" id="addToCartBtn">Agregar al carrito</button>
     </div>
   `;
+  // bind del botón agregar
+  const addBtn = document.getElementById("addToCartBtn");
+  addBtn.onclick = () => addToCartFromModal(p.id);
   modal.classList.add("active");
 }
 
-/* ===========================
-   Carrito
-   =========================== */
-function addToCart(id) {
+function addToCartFromModal(id) {
   const p = PRODUCTS.find(x => x.id === id);
-  const qty = Number(document.getElementById("qty").value);
+  if (!p) return;
+  const qtyEl = modalBody.querySelector("#qty");
+  const qty = qtyEl ? Number(qtyEl.value) : 1;
   const extrasChecked = [...modalBody.querySelectorAll("input[type=checkbox]:checked")];
   const extras = extrasChecked.map(ch => {
     const ex = p.extras.find(e => e.id === ch.value);
@@ -226,10 +251,15 @@ function addToCart(id) {
   modal.classList.remove("active");
 }
 
+/* ===========================
+   Carrito
+   =========================== */
 function renderCart() {
   const list = document.getElementById("cartList");
   const totalEl = document.getElementById("cartTotal");
   const emptyMsg = document.getElementById("emptyCartMsg");
+
+  if (!list || !totalEl || !emptyMsg) return;
 
   list.innerHTML = "";
   if (cart.length === 0) {
@@ -240,8 +270,8 @@ function renderCart() {
   emptyMsg.style.display = "none";
 
   cart.forEach((it, i) => {
-    const extrasTxt = it.extras.length ? it.extras.map(e => e.name).join(", ") : "Sin extras";
-    const totalLine = (it.precioBase + it.extras.reduce((a,b)=>a+b.price,0)) * it.cantidad;
+    const extrasTxt = it.extras && it.extras.length ? it.extras.map(e => e.name).join(", ") : "Sin extras";
+    const totalLine = (it.precioBase + (it.extras ? it.extras.reduce((a,b)=>a+b.price,0) : 0)) * it.cantidad;
 
     const li = document.createElement("li");
     li.innerHTML = `
@@ -252,12 +282,23 @@ function renderCart() {
       </div>
       <div style="text-align:right;">
         <div><strong>$${totalLine.toLocaleString()}</strong></div>
-        <button class="btn secondary" onclick="decQty(${i})">-</button>
-        <button class="btn secondary" onclick="incQty(${i})">+</button>
-        <button class="btn" style="background:#f8d6d6;color:#a33" onclick="removeItem(${i})">Eliminar</button>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px">
+          <button class="btn secondary" data-action="dec" data-i="${i}">-</button>
+          <button class="btn secondary" data-action="inc" data-i="${i}">+</button>
+          <button class="btn" style="background:#f8d6d6;color:#a33" data-action="del" data-i="${i}">Eliminar</button>
+        </div>
       </div>
     `;
     list.appendChild(li);
+  });
+
+  // listeners acciones (delegación simple)
+  list.querySelectorAll("button").forEach(b => {
+    const i = Number(b.dataset.i);
+    const action = b.dataset.action;
+    if (action === "inc") b.onclick = () => { incQty(i); };
+    if (action === "dec") b.onclick = () => { decQty(i); };
+    if (action === "del") b.onclick = () => { removeItem(i); };
   });
 
   totalEl.textContent = calcTotal().toLocaleString();
@@ -267,21 +308,23 @@ function incQty(i) { cart[i].cantidad++; saveState(); renderCart(); }
 function decQty(i) { cart[i].cantidad = Math.max(1, cart[i].cantidad-1); saveState(); renderCart(); }
 function removeItem(i) { cart.splice(i,1); saveState(); renderCart(); }
 function calcTotal() {
-  return cart.reduce((sum, it) => sum + (it.precioBase + it.extras.reduce((a,b)=>a+b.price,0)) * it.cantidad, 0);
+  return cart.reduce((sum, it) => sum + ((it.precioBase || 0) + (it.extras ? it.extras.reduce((a,b)=>a+b.price,0) : 0)) * it.cantidad, 0);
 }
-document.getElementById("clearCart").onclick = () => { cart = []; saveState(); renderCart(); };
+const clearCartBtn = document.getElementById("clearCart");
+if (clearCartBtn) clearCartBtn.onclick = () => { cart = []; saveState(); renderCart(); };
 
 /* ===========================
    Checkout
    =========================== */
-document.getElementById("checkoutBtn").onclick = () => {
+const checkoutBtn = document.getElementById("checkoutBtn");
+if (checkoutBtn) checkoutBtn.onclick = () => {
   if (cart.length === 0) return alert("Tu carrito está vacío");
   if (!currentUser) return alert("Inicia sesión antes de continuar");
 
   modalBody.innerHTML = `
     <h3>Resumen del pedido</h3>
     ${cart.map(it => `
-      <div><strong>${it.nombre}</strong> x${it.cantidad} - $${((it.precioBase + it.extras.reduce((a,b)=>a+b.price,0))*it.cantidad).toLocaleString()}</div>
+      <div><strong>${it.nombre}</strong> x${it.cantidad} - $${((it.precioBase + (it.extras ? it.extras.reduce((a,b)=>a+b.price,0) : 0))*it.cantidad).toLocaleString()}</div>
     `).join("")}
     <hr>
     <p><strong>Total:</strong> $${calcTotal().toLocaleString()}</p>
@@ -289,13 +332,16 @@ document.getElementById("checkoutBtn").onclick = () => {
     <label><input type="radio" name="pago" value="efectivo" checked> Efectivo</label><br>
     <label><input type="radio" name="pago" value="transferencia"> Transferencia</label><br>
     <label><input type="radio" name="pago" value="tarjeta"> Tarjeta</label><br><br>
-    <button class="btn primary" onclick="confirmOrder()">Confirmar pedido</button>
+    <button class="btn primary" id="confirmOrderBtn">Confirmar pedido</button>
   `;
+  // bind botón confirmar
+  document.getElementById("confirmOrderBtn").onclick = confirmOrder;
   modal.classList.add("active");
 };
 
 function confirmOrder() {
-  const metodo = document.querySelector("input[name='pago']:checked").value;
+  const pagoEl = modalBody.querySelector("input[name='pago']:checked");
+  const metodo = pagoEl ? pagoEl.value : "efectivo";
   const order = {
     id: "PED-" + Date.now(),
     user: currentUser.email,
@@ -316,10 +362,11 @@ function confirmOrder() {
 /* ===========================
    Registro / Login
    =========================== */
-document.getElementById("registerBtn").onclick = () => {
-  const name = document.getElementById("nameInput").value.trim();
-  const email = document.getElementById("emailInput").value.trim().toLowerCase();
-  const pass = document.getElementById("passwordInput").value;
+const registerBtn = document.getElementById("registerBtn");
+if (registerBtn) registerBtn.onclick = () => {
+  const name = (document.getElementById("nameInput") || {}).value || "";
+  const email = ((document.getElementById("emailInput") || {}).value || "").trim().toLowerCase();
+  const pass = (document.getElementById("passwordInput") || {}).value || "";
   if (!name || !email || !pass) return alert("Completa todos los campos.");
   if (users.find(u => u.email === email)) return alert("Ese correo ya está registrado.");
   users.push({ name, email, pass });
@@ -330,9 +377,10 @@ document.getElementById("registerBtn").onclick = () => {
   showView("catalog");
 };
 
-document.getElementById("loginUserBtn").onclick = () => {
-  const email = document.getElementById("emailInput").value.trim().toLowerCase();
-  const pass = document.getElementById("passwordInput").value;
+const loginUserBtn = document.getElementById("loginUserBtn");
+if (loginUserBtn) loginUserBtn.onclick = () => {
+  const email = ((document.getElementById("emailInput") || {}).value || "").trim().toLowerCase();
+  const pass = (document.getElementById("passwordInput") || {}).value || "";
   const u = users.find(x => x.email === email && x.pass === pass);
   if (!u) return alert("Credenciales incorrectas.");
   currentUser = { name: u.name, email: u.email };
@@ -343,7 +391,8 @@ document.getElementById("loginUserBtn").onclick = () => {
 };
 
 function updateLoginButton(loggedIn) {
-  const btn = document.getElementById("loginBtn");
+  const btn = loginBtnEl;
+  if (!btn) return;
   if (loggedIn) {
     btn.textContent = "Cerrar sesión";
     btn.onclick = () => {
@@ -362,27 +411,36 @@ function updateLoginButton(loggedIn) {
 /* ===========================
    Historial de pedidos
    =========================== */
-document.querySelector("[data-view='orders']").onclick = () => {
-  if (!currentUser) return alert("Inicia sesión para ver tus pedidos");
-  const myOrders = orders.filter(o => o.user === currentUser.email);
-  const container = document.getElementById("ordersContainer");
-  if (myOrders.length === 0) {
-    container.innerHTML = "<p>No tienes pedidos aún.</p>";
-  } else {
-    container.innerHTML = myOrders.map(o => `
-      <div class="order-card">
-        <strong>${o.id}</strong> - ${o.date}<br>
-        <small>${o.items.length} ítems — Total: $${o.total.toLocaleString()} (${o.metodo})</small>
-      </div>
-    `).join("");
-  }
-  showView("orders");
-};
+const ordersNavBtn = document.querySelector("[data-view='orders']");
+if (ordersNavBtn) {
+  ordersNavBtn.onclick = () => {
+    if (!currentUser) return alert("Inicia sesión para ver tus pedidos");
+    const myOrders = orders.filter(o => o.user === currentUser.email);
+    const container = document.getElementById("ordersContainer");
+    if (!container) return;
+    if (myOrders.length === 0) {
+      container.innerHTML = "<p>No tienes pedidos aún.</p>";
+    } else {
+      container.innerHTML = myOrders.map(o => `
+        <div class="order-card">
+          <strong>${o.id}</strong> - ${o.date}<br>
+          <small>${o.items.length} ítems — Total: $${o.total.toLocaleString()} (${o.metodo})</small>
+        </div>
+      `).join("");
+    }
+    showView("orders");
+  };
+}
 
 /* ===========================
    Modal control
    =========================== */
-document.getElementById("closeModal").onclick = () => modal.classList.remove("active");
+const closeModalBtn = document.getElementById("closeModal");
+if (closeModalBtn) closeModalBtn.onclick = () => modal.classList.remove("active");
+// también cerrar modal si se hace click fuera del contenido
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) modal.classList.remove("active");
+});
 
 /* ===========================
    Guardado de estado
